@@ -97,26 +97,6 @@ def index_project(db: Session, project: Project, targets: list[dict]) -> dict:
             stats["indexed"] += 1
             logger.info(f"Indexed: {rel_path} ({len(chunks)} chunks)")
 
-    # 파일 시스템에서 삭제된 파일 감지 (이번 targets glob 범위 내에서만)
-    # all_sources: 이번에 glob으로 매칭된 파일들
-    # DB에 있지만 이번 glob에 매칭되지 않은 파일은 다른 targets에서 넣은 것일 수 있으므로 건드리지 않음
-    target_doc_types = {t["doc_type"] for t in targets}
-    db_sources = (
-        db.query(Document.source)
-        .filter(
-            Document.project_id == project.id,
-            Document.doc_type.in_(target_doc_types),
-        )
-        .distinct()
-        .all()
-    )
-    for (source,) in db_sources:
-        if source not in all_sources:
-            db.query(Document).filter(
-                Document.project_id == project.id, Document.source == source
-            ).delete(synchronize_session="fetch")
-            stats["deleted"] += 1
-
     db.commit()
     return stats
 

@@ -1,4 +1,4 @@
-# RAG 검색 서버 — 프로젝트 계획서 v2
+# RAG 검색 서버 — 프로젝트 계획서 v3 (구현 완료)
 
 ## 목적
 
@@ -364,3 +364,56 @@ Edit/Write 도구 호출 전 자동으로 RAG 검색 실행
 | E5 프리픽스 누락 | query:/passage: 프리픽스 명시 |
 | 소스 전체 색인 노이즈 | Service/Controller/Composable 위주 |
 | CLAUDE.md 자동화 | hooks 방법 2 추후 검토 |
+
+---
+
+## 구현 결과 (v3)
+
+### 해결한 버그
+
+| 버그 | 원인 | 해결 |
+|---|---|---|
+| UniqueConstraint 충돌 | db.add() 후 autoflush가 delete 전에 발생 | delete 후 db.flush() 명시 |
+| SQL `:embedding::vector` 파라미터 충돌 | SQLAlchemy `:param`과 PostgreSQL `::cast` 문법 충돌 | embedding을 문자열로 직접 삽입 |
+| `**/*.md`가 node_modules 포함 | glob이 모든 하위 디렉토리 매칭 | EXCLUDE_DIRS 필터 추가 |
+| 증분 색인 시 다른 doc_type 삭제 | 같은 doc_type의 모든 파일을 삭제 대상으로 판단 | 자동 삭제 로직 제거 (DELETE API 사용) |
+| 프론트 소스 0개 색인 | `src/` 디렉토리가 없고 루트에 바로 위치 | glob 패턴 수정 |
+
+### 현재 색인 현황
+
+```
+프로젝트 jh (JH Half):
+  총 1,096 청크
+  - java: 194 (Service, Controller)
+  - vue: 372 (components, pages)
+  - typescript: 164 (composables, middleware, stores)
+  - markdown: 366 (컨벤션, 아키텍처 문서)
+
+프로젝트 seo (SEO Analysis):
+  총 80 청크
+  - markdown: 74 (아키텍처, 기능명세)
+  - txt: 6 (요구사항, JD)
+
+전체: 1,176 청크, 2 프로젝트
+```
+
+### JH 프로젝트 색인 glob 패턴 (실제 사용)
+
+```json
+{
+  "targets": [
+    { "glob": "*/**/*.md", "doc_type": "convention" },
+    { "glob": "jh-half-backend/src/**/service/**/*.java", "doc_type": "source" },
+    { "glob": "jh-half-backend/src/**/controller/**/*.java", "doc_type": "source" },
+    { "glob": "jh-half-frontend/components/**/*.vue", "doc_type": "source" },
+    { "glob": "jh-half-frontend/composables/**/*.ts", "doc_type": "source" },
+    { "glob": "jh-half-frontend/middleware/**/*.ts", "doc_type": "source" },
+    { "glob": "jh-half-frontend/pages/**/*.vue", "doc_type": "source" },
+    { "glob": "jh-half-frontend/stores/**/*.ts", "doc_type": "source" }
+  ]
+}
+```
+
+### GitHub
+
+https://github.com/Qmini94/rag-search-server
