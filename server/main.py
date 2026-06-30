@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, text
 
+from config import PROJECT_ID, PROJECT_NAME, PROJECT_BASE_PATH
 from db.database import SessionLocal
-from models.models import Document
-from routers import project, index, search
+from models.models import Project, Document
+from routers import index, search, chat
 from services.embedder import get_model
 
 
@@ -14,25 +16,38 @@ async def lifespan(app: FastAPI):
     print("Loading embedding model...")
     get_model()
     print("Model loaded.")
+
+    # Q-CMS 프로젝트 자동 등록
+    db = SessionLocal()
+    try:
+        existing = db.query(Project).filter(Project.id == PROJECT_ID).first()
+        if not existing:
+            db.add(Project(id=PROJECT_ID, name=PROJECT_NAME, base_path=PROJECT_BASE_PATH))
+            db.commit()
+            print(f"Project '{PROJECT_ID}' registered.")
+    finally:
+        db.close()
+
     yield
 
 
-app = FastAPI(title="RAG Search Server", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Q-CMS RAG Chatbot", version="2.0.0", lifespan=lifespan)
 
-app.include_router(project.router)
 app.include_router(index.router)
 app.include_router(search.router)
+app.include_router(chat.router)
+
+app.mount("/ui", StaticFiles(directory="static", html=True), name="static")
 
 
 @app.get("/health")
 def health():
     db = SessionLocal()
     try:
-        total_docs = db.query(func.count(Document.id)).scalar()
-        project_count = db.execute(
-            text("SELECT COUNT(DISTINCT project_id) FROM documents")
+        total_docs = db.query(func.count(Document.id)).filter(
+            Document.project_id == PROJECT_ID
         ).scalar()
-        return {"status": "ok", "projects": project_count or 0, "total_docs": total_docs or 0}
+        return {"status": "ok", "project": PROJECT_ID, "total_docs": total_docs or 0}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
     finally:

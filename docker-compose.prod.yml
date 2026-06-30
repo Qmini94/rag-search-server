@@ -23,14 +23,15 @@ services:
       MODEL_NAME: intfloat/multilingual-e5-small
       PROJECT_ID: qcms
       PROJECT_NAME: Q-CMS
-      PROJECT_BASE_PATH: /project/JH/half
-      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:7100/v1}
-      VLLM_MODEL: ${VLLM_MODEL:-google/gemma-4-E4B-it}
+      PROJECT_BASE_PATH: /project
+      VLLM_BASE_URL: http://host.docker.internal:7100/v1
+      VLLM_MODEL: google/gemma-4-E4B-it
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - /c/Users/user/Desktop/Project:/project:ro
       - model-cache:/root/.cache/huggingface
 
 volumes:
