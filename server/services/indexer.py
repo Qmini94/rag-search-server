@@ -1,6 +1,7 @@
 import hashlib
 import glob as glob_module
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -27,20 +28,20 @@ def compute_file_hash(file_path: str) -> str:
 
 
 def index_project(db: Session, project: Project, targets: list[dict]) -> dict:
-    base = Path(project.base_path)
+    base = Path(project.base_path).resolve()
     stats = {"indexed": 0, "skipped": 0, "deleted": 0, "errors": 0}
 
     all_sources = set()
 
     for target in targets:
-        pattern = str(base / target["glob"])
+        pattern = os.path.normpath(str(base / target["glob"]))
         doc_type = target["doc_type"]
 
         matched_files = glob_module.glob(pattern, recursive=True)
 
         for file_path in matched_files:
             file_path = str(Path(file_path).resolve())
-            rel_path = str(Path(file_path).relative_to(base))
+            rel_path = os.path.relpath(file_path, base)
 
             # node_modules 등 제외
             if any(part in EXCLUDE_DIRS for part in Path(rel_path).parts):

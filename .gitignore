@@ -3,3 +3,5 @@ __pycache__/
 .env
 *.stackdump
 docu/.obsidian/
+data/sources/
+data/docs/

@@ -3,92 +3,545 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Q-CMS RAG 챗봇</title>
+<title>Q-CMS RAG Chatbot</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; }
-.header { background: #1a73e8; color: #fff; padding: 16px 24px; font-size: 18px; font-weight: 600; }
-.header span { font-size: 13px; font-weight: 400; opacity: .8; margin-left: 8px; }
-.chat-area { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-.msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; line-height: 1.6; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
-.msg.user { align-self: flex-end; background: #1a73e8; color: #fff; border-bottom-right-radius: 4px; }
-.msg.bot { align-self: flex-start; background: #fff; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.msg.bot code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-.msg.bot pre { background: #f5f5f5; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
-.msg.bot pre code { background: none; padding: 0; }
-.sources { margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px; color: #888; }
-.sources div { margin: 2px 0; }
-.input-area { padding: 16px 24px; background: #fff; border-top: 1px solid #e0e0e0; display: flex; gap: 12px; }
-.input-area input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 24px; font-size: 14px; outline: none; }
-.input-area input:focus { border-color: #1a73e8; }
-.input-area button { padding: 12px 24px; background: #1a73e8; color: #fff; border: none; border-radius: 24px; font-size: 14px; cursor: pointer; }
-.input-area button:hover { background: #1557b0; }
-.input-area button:disabled { background: #ccc; cursor: not-allowed; }
-.typing { color: #888; font-style: italic; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#f5f6fa; color:#333; height:100vh; display:flex; flex-direction:column; }
+
+/* Header */
+.header { background:#1a1a2e; color:#fff; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.header h1 { font-size:17px; font-weight:600; }
+.header-right { display:flex; align-items:center; gap:12px; }
+.header-right .badge { font-size:11px; background:rgba(255,255,255,.15); padding:3px 10px; border-radius:10px; }
+.admin-toggle { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; }
+.admin-toggle:hover { background:rgba(255,255,255,.22); }
+
+/* === Chatbot Main === */
+.chat-view { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.chat-messages { flex:1; overflow-y:auto; padding:24px; }
+.chat-messages .msg { max-width:720px; margin:0 auto 16px; }
+.msg.user { display:flex; justify-content:flex-end; }
+.msg.user .bubble { background:#1a73e8; color:#fff; padding:10px 16px; border-radius:16px 16px 4px 16px; max-width:80%; font-size:14px; line-height:1.5; }
+.msg.bot { display:flex; justify-content:flex-start; }
+.msg.bot .bubble { background:#fff; padding:12px 16px; border-radius:16px 16px 16px 4px; max-width:85%; font-size:14px; line-height:1.7; box-shadow:0 1px 3px rgba(0,0,0,.08); white-space:pre-wrap; word-break:break-word; }
+.msg.bot .sources-list { margin-top:8px; font-size:12px; color:#888; }
+.msg.bot .sources-list span { display:inline-block; background:#f0f4ff; color:#1a73e8; padding:2px 8px; border-radius:4px; margin:2px 4px 2px 0; }
+.chat-empty { flex:1; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:15px; flex-direction:column; gap:8px; }
+.chat-empty .hint { font-size:12px; color:#ccc; }
+.chat-input-area { border-top:1px solid #e0e0e0; background:#fff; padding:16px 24px; flex-shrink:0; }
+.chat-input-wrap { max-width:720px; margin:0 auto; display:flex; gap:10px; align-items:flex-end; }
+.chat-input-wrap textarea { flex:1; padding:10px 14px; border:1px solid #ddd; border-radius:12px; font-size:14px; resize:none; outline:none; min-height:44px; max-height:120px; font-family:inherit; line-height:1.4; }
+.chat-input-wrap textarea:focus { border-color:#1a73e8; }
+.chat-input-wrap button { background:#1a73e8; color:#fff; border:none; border-radius:12px; padding:10px 18px; cursor:pointer; font-size:14px; flex-shrink:0; height:44px; }
+.chat-input-wrap button:hover { background:#1557b0; }
+.chat-input-wrap button:disabled { background:#aaa; cursor:not-allowed; }
+
+/* === Admin Panel (overlay) === */
+.admin-overlay { display:none; position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.4); }
+.admin-overlay.active { display:flex; }
+.admin-panel { background:#f5f6fa; width:90vw; max-width:1100px; height:90vh; margin:auto; border-radius:12px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 40px rgba(0,0,0,.25); }
+.admin-header { background:#1a1a2e; color:#fff; padding:12px 20px; display:flex; align-items:center; gap:16px; flex-shrink:0; }
+.admin-header h2 { font-size:15px; font-weight:600; flex:1; }
+.admin-tabs { display:flex; gap:4px; }
+.admin-tabs button { background:none; border:none; color:rgba(255,255,255,.6); padding:7px 14px; border-radius:6px 6px 0 0; cursor:pointer; font-size:13px; }
+.admin-tabs button.active { background:rgba(255,255,255,.15); color:#fff; }
+.admin-tabs button:hover { color:#fff; }
+.admin-close { background:none; border:none; color:rgba(255,255,255,.6); font-size:20px; cursor:pointer; padding:4px 8px; }
+.admin-close:hover { color:#fff; }
+.admin-body { flex:1; overflow:hidden; }
+.admin-tab { display:none; height:100%; overflow-y:auto; }
+.admin-tab.active { display:flex; flex-direction:column; }
+
+/* 문서 관리 */
+.docs-layout { display:flex; flex:1; overflow:hidden; }
+.docs-sidebar { width:260px; background:#fff; border-right:1px solid #e0e0e0; display:flex; flex-direction:column; }
+.docs-sidebar .toolbar { padding:10px; border-bottom:1px solid #eee; display:flex; gap:6px; }
+.docs-list { flex:1; overflow-y:auto; }
+.docs-list .item { padding:9px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; font-size:13px; }
+.docs-list .item:hover { background:#f5f7ff; }
+.docs-list .item.active { background:#e8f0fe; color:#1a73e8; }
+.docs-list .item .meta { font-size:11px; color:#999; }
+.docs-list .item .del-btn { background:none; border:none; color:#ccc; cursor:pointer; font-size:15px; }
+.docs-list .item .del-btn:hover { color:#e74c3c; }
+.docs-editor { flex:1; display:flex; flex-direction:column; }
+.docs-editor .editor-toolbar { padding:8px 14px; background:#fff; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center; }
+.docs-editor .editor-toolbar .filename { font-size:14px; font-weight:600; }
+.docs-editor textarea { flex:1; padding:14px; border:none; outline:none; font-family:'Consolas','Courier New',monospace; font-size:13px; line-height:1.6; resize:none; background:#fafafa; }
+.docs-editor .empty { flex:1; display:flex; align-items:center; justify-content:center; color:#999; font-size:13px; }
+
+/* 수집 설정 */
+.sources-layout { padding:20px; flex:1; overflow-y:auto; }
+.card { background:#fff; border-radius:8px; padding:18px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.card h3 { font-size:14px; margin-bottom:10px; color:#333; }
+.stats-bar { display:flex; gap:14px; flex-wrap:wrap; }
+.stat-item { background:#f5f7ff; padding:10px 18px; border-radius:8px; text-align:center; min-width:100px; }
+.stat-item .num { font-size:20px; font-weight:700; color:#1a73e8; }
+.stat-item .label { font-size:11px; color:#888; margin-top:2px; }
+.freshness { font-size:12px; color:#888; margin-top:8px; }
+.freshness.warn { color:#e67e22; font-weight:600; }
+.freshness.danger { color:#e74c3c; font-weight:600; }
+.target-row { display:flex; align-items:center; gap:8px; padding:5px 0; }
+.target-row input { flex:1; }
+.target-row select { width:110px; }
+.dir-list { font-size:13px; color:#555; }
+.dir-list .dir-item { padding:4px 0; display:flex; align-items:center; gap:8px; }
+.dir-list .dir-item .icon { color:#1a73e8; }
+
+/* 검색 */
+.search-layout { padding:20px; flex:1; overflow-y:auto; }
+.search-bar { display:flex; gap:8px; margin-bottom:14px; }
+.search-bar input { flex:1; }
+.search-bar select { width:120px; }
+.result-item { background:#fff; padding:12px 14px; border-radius:8px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+.result-item .result-header { display:flex; justify-content:space-between; margin-bottom:4px; }
+.result-item .result-source { font-size:12px; color:#1a73e8; }
+.result-item .result-score { font-size:12px; color:#888; }
+.result-item .result-content { font-size:13px; line-height:1.5; color:#555; white-space:pre-wrap; max-height:200px; overflow-y:auto; }
+
+/* 공통 */
+.btn { padding:6px 13px; border:none; border-radius:6px; cursor:pointer; font-size:13px; }
+.btn-primary { background:#1a73e8; color:#fff; }
+.btn-primary:hover { background:#1557b0; }
+.btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+.btn-danger { background:#e74c3c; color:#fff; }
+.btn-danger:hover { background:#c0392b; }
+.btn-outline { background:#fff; border:1px solid #ddd; color:#555; }
+.btn-outline:hover { background:#f5f5f5; }
+input[type=text], select, textarea {
+  padding:7px 11px; border:1px solid #ddd; border-radius:6px; font-size:13px; outline:none;
+}
+input:focus, select:focus, textarea:focus { border-color:#1a73e8; }
+.toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:8px; color:#fff; font-size:13px; z-index:999; animation:fadeIn .3s; }
+.toast.success { background:#27ae60; }
+.toast.error { background:#e74c3c; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 </style>
 </head>
 <body>
-<div class="header">Q-CMS RAG 챗봇 <span>Q-CMS 솔루션 문서 기반 질의응답</span></div>
-<div class="chat-area" id="chatArea">
-  <div class="msg bot">안녕하세요! Q-CMS 관련 궁금한 점을 질문해주세요.</div>
+
+<!-- Header -->
+<div class="header">
+  <h1>Q-CMS RAG Chatbot</h1>
+  <div class="header-right">
+    <span class="badge" id="healthBadge">-</span>
+    <button class="admin-toggle" onclick="openAdmin()">관리</button>
+  </div>
 </div>
-<div class="input-area">
-  <input type="text" id="questionInput" placeholder="질문을 입력하세요..." autocomplete="off">
-  <button id="sendBtn" onclick="sendQuestion()">전송</button>
+
+<!-- Chatbot Main View -->
+<div class="chat-view">
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-empty" id="chatEmpty">
+      <div>Q-CMS 관련 질문을 입력하세요</div>
+      <div class="hint">코드 패턴, 컨벤션, 구조 등을 질문할 수 있습니다</div>
+    </div>
+  </div>
+  <div class="chat-input-area">
+    <div class="chat-input-wrap">
+      <textarea id="chatInput" rows="1" placeholder="질문을 입력하세요..." onkeydown="handleChatKey(event)" oninput="autoResize(this)"></textarea>
+      <button id="chatSendBtn" onclick="sendChat()">전송</button>
+    </div>
+  </div>
 </div>
+
+<!-- Admin Panel Overlay -->
+<div class="admin-overlay" id="adminOverlay" onclick="if(event.target===this)closeAdmin()">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <h2>RAG 관리</h2>
+      <div class="admin-tabs">
+        <button class="active" onclick="switchAdminTab('docs')">문서 관리</button>
+        <button onclick="switchAdminTab('sources')">수집 설정</button>
+        <button onclick="switchAdminTab('search')">검색 테스트</button>
+      </div>
+      <button class="admin-close" onclick="closeAdmin()">&times;</button>
+    </div>
+    <div class="admin-body">
+
+      <!-- 문서 관리 탭 -->
+      <div id="atab-docs" class="admin-tab active">
+        <div class="docs-layout">
+          <div class="docs-sidebar">
+            <div class="toolbar">
+              <button class="btn btn-primary" onclick="createDoc()" style="flex:1">+ 새 문서</button>
+              <label class="btn btn-outline" style="cursor:pointer">
+                업로드 <input type="file" accept=".md" onchange="uploadDoc(this)" hidden>
+              </label>
+            </div>
+            <div class="docs-list" id="docsList"></div>
+          </div>
+          <div class="docs-editor">
+            <div id="editorArea">
+              <div class="empty">좌측에서 문서를 선택하세요</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 수집 설정 탭 -->
+      <div id="atab-sources" class="admin-tab">
+        <div class="sources-layout">
+          <div class="card">
+            <h3>인덱스 현황</h3>
+            <div class="stats-bar" id="statsBar"></div>
+            <div class="freshness" id="freshness"></div>
+          </div>
+          <div class="card">
+            <h3>data/ 디렉토리</h3>
+            <div style="font-size:12px;color:#888;margin-bottom:8px">
+              소스코드를 data/ 아래 폴더로 복사한 뒤, 아래 수집 패턴에서 경로를 설정하세요.
+            </div>
+            <div class="dir-list" id="dirList">
+              <div style="color:#999;font-size:13px">로딩 중...</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>수집 패턴</h3>
+            <div id="targetsList"></div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-outline" onclick="addTarget()">+ 패턴 추가</button>
+              <button class="btn btn-primary" onclick="saveConfig()">설정 저장</button>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn btn-primary" onclick="runIndex()" id="indexBtn" style="padding:10px 24px;font-size:14px">
+              전체 인덱싱 실행
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 검색 테스트 탭 -->
+      <div id="atab-search" class="admin-tab">
+        <div class="search-layout">
+          <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="검색어 입력..." onkeydown="if(event.key==='Enter')doSearch()">
+            <select id="searchType">
+              <option value="">전체</option>
+              <option value="convention">문서</option>
+              <option value="source">소스코드</option>
+            </select>
+            <button class="btn btn-primary" onclick="doSearch()">검색</button>
+          </div>
+          <div id="searchResults"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <script>
-const chatArea = document.getElementById('chatArea');
-const input = document.getElementById('questionInput');
-const btn = document.getElementById('sendBtn');
+const API = '';
 
-input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) sendQuestion(); });
+// === 유틸 ===
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatBytes(b) { if(b<1024)return b+'B'; if(b<1048576)return(b/1024).toFixed(1)+'KB'; return(b/1048576).toFixed(1)+'MB'; }
+function formatDate(s) { const d=new Date(s); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function timeSince(d) { const s=Math.floor((Date.now()-d)/1000); if(s<60)return s+'초 전'; if(s<3600)return Math.floor(s/60)+'분 전'; if(s<86400)return Math.floor(s/3600)+'시간 전'; return Math.floor(s/86400)+'일 전'; }
 
-function addMsg(text, cls, sourcesHtml) {
-  const div = document.createElement('div');
-  div.className = 'msg ' + cls;
-  div.textContent = text;
-  if(sourcesHtml) {
-    const s = document.createElement('div');
-    s.className = 'sources';
-    s.innerHTML = sourcesHtml;
-    div.appendChild(s);
-  }
-  chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
-  return div;
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
 }
 
-async function sendQuestion() {
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// === Health Badge ===
+fetch(API + '/health').then(r=>r.json()).then(d=>{
+  document.getElementById('healthBadge').textContent = d.total_docs + ' chunks';
+}).catch(()=>{
+  document.getElementById('healthBadge').textContent = 'offline';
+});
+
+// === Chatbot ===
+let chatHistory = [];
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
   const q = input.value.trim();
-  if(!q) return;
+  if (!q) return;
+
   input.value = '';
-  addMsg(q, 'user');
+  autoResize(input);
+
+  // Hide empty state
+  const empty = document.getElementById('chatEmpty');
+  if (empty) empty.remove();
+
+  const messages = document.getElementById('chatMessages');
+
+  // User message
+  const userDiv = document.createElement('div');
+  userDiv.className = 'msg user';
+  userDiv.innerHTML = `<div class="bubble">${escapeHtml(q)}</div>`;
+  messages.appendChild(userDiv);
+
+  // Bot thinking
+  const botDiv = document.createElement('div');
+  botDiv.className = 'msg bot';
+  botDiv.innerHTML = `<div class="bubble" style="color:#aaa">생각 중...</div>`;
+  messages.appendChild(botDiv);
+  messages.scrollTop = messages.scrollHeight;
+
+  const btn = document.getElementById('chatSendBtn');
   btn.disabled = true;
-  const typing = addMsg('답변 생성 중...', 'bot typing');
 
   try {
-    const res = await fetch('/chat', {
+    const res = await fetch(API + '/chat', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ question: q, top_k: 5 })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, top_k: 5 }),
     });
     const data = await res.json();
-    typing.remove();
 
     let sourcesHtml = '';
-    if(data.sources && data.sources.length) {
-      sourcesHtml = '<b>참고 문서:</b>' + data.sources.map(s =>
-        `<div>${s.source} (${(s.similarity*100).toFixed(1)}%)</div>`
-      ).join('');
+    if (data.sources && data.sources.length) {
+      sourcesHtml = '<div class="sources-list">' +
+        data.sources.map(s => `<span title="${(s.similarity*100).toFixed(1)}%">${s.source}</span>`).join('') +
+        '</div>';
     }
-    addMsg(data.answer || data.detail || 'Error', 'bot', sourcesHtml);
+    botDiv.innerHTML = `<div class="bubble">${escapeHtml(data.answer)}${sourcesHtml}</div>`;
   } catch(e) {
-    typing.remove();
-    addMsg('서버 연결 실패: ' + e.message, 'bot');
+    botDiv.innerHTML = `<div class="bubble" style="color:#e74c3c">오류: ${escapeHtml(e.message)}</div>`;
   }
+
   btn.disabled = false;
+  messages.scrollTop = messages.scrollHeight;
   input.focus();
 }
+
+// === Admin Panel ===
+function openAdmin() {
+  document.getElementById('adminOverlay').classList.add('active');
+  loadDocs();
+}
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.remove('active');
+}
+
+function switchAdminTab(name) {
+  document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.admin-tabs button').forEach(el => el.classList.remove('active'));
+  document.getElementById('atab-' + name).classList.add('active');
+  document.querySelector(`.admin-tabs button[onclick*="${name}"]`).classList.add('active');
+  if (name === 'docs') loadDocs();
+  if (name === 'sources') { loadStats(); loadConfig(); loadDirList(); }
+}
+
+// === 문서 관리 ===
+let currentDoc = null;
+
+async function loadDocs() {
+  const res = await fetch(API + '/documents');
+  const data = await res.json();
+  const list = document.getElementById('docsList');
+  list.innerHTML = data.docs.map(d => `
+    <div class="item ${currentDoc === d.name ? 'active' : ''}" onclick="openDoc('${d.name}')">
+      <div>
+        <div>${d.name}</div>
+        <div class="meta">${formatBytes(d.size)} · ${formatDate(d.modified)}</div>
+      </div>
+      <button class="del-btn" onclick="event.stopPropagation();deleteDoc('${d.name}')" title="삭제">&times;</button>
+    </div>
+  `).join('');
+}
+
+async function openDoc(name) {
+  currentDoc = name;
+  const res = await fetch(API + '/documents/' + encodeURIComponent(name));
+  const data = await res.json();
+  document.getElementById('editorArea').innerHTML = `
+    <div class="editor-toolbar">
+      <span class="filename">${data.name}</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:12px;color:#888" id="saveStatus"></span>
+        <button class="btn btn-primary" onclick="saveDoc()">저장 + 인덱싱</button>
+      </div>
+    </div>
+    <textarea id="docContent">${escapeHtml(data.content)}</textarea>
+  `;
+  loadDocs();
+}
+
+async function saveDoc() {
+  if (!currentDoc) return;
+  const content = document.getElementById('docContent').value;
+  document.getElementById('saveStatus').textContent = '저장 중...';
+  const res = await fetch(API + '/documents/' + encodeURIComponent(currentDoc), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  const data = await res.json();
+  document.getElementById('saveStatus').textContent = data.chunks + '개 청크 인덱싱 완료';
+  toast(currentDoc + ' 저장 완료 (' + data.chunks + ' chunks)');
+  loadDocs();
+}
+
+async function deleteDoc(name) {
+  if (!confirm('"' + name + '" 를 삭제하시겠습니까?')) return;
+  await fetch(API + '/documents/' + encodeURIComponent(name), { method: 'DELETE' });
+  if (currentDoc === name) {
+    currentDoc = null;
+    document.getElementById('editorArea').innerHTML = '<div class="empty">좌측에서 문서를 선택하세요</div>';
+  }
+  toast(name + ' 삭제됨');
+  loadDocs();
+}
+
+function createDoc() {
+  const name = prompt('파일명 입력 (예: 18-새문서.md)');
+  if (!name) return;
+  const filename = name.endsWith('.md') ? name : name + '.md';
+  fetch(API + '/documents/' + encodeURIComponent(filename), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: '# ' + filename.replace('.md','') + '\n\n' }),
+  }).then(() => { toast('문서 생성됨'); openDoc(filename); });
+}
+
+function uploadDoc(input) {
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const form = new FormData();
+  form.append('file', file);
+  fetch(API + '/documents/upload', { method: 'POST', body: form })
+    .then(r => {
+      if (r.status === 409) { toast('이미 존재하는 파일입니다', 'error'); return; }
+      return r.json();
+    })
+    .then(data => {
+      if (data) { toast(data.name + ' 업로드 완료'); loadDocs(); }
+    });
+  input.value = '';
+}
+
+// === 수집 설정 ===
+async function loadStats() {
+  const res = await fetch(API + '/stats');
+  const data = await res.json();
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-item"><div class="num">${data.total_chunks}</div><div class="label">총 청크</div></div>
+    ${Object.entries(data.by_type || {}).map(([k,v]) =>
+      '<div class="stat-item"><div class="num">' + v + '</div><div class="label">' + k + '</div></div>'
+    ).join('')}
+  `;
+  const fresh = document.getElementById('freshness');
+  if (data.last_indexed_at) {
+    const ago = timeSince(new Date(data.last_indexed_at));
+    const days = (Date.now() - new Date(data.last_indexed_at)) / 86400000;
+    fresh.className = 'freshness' + (days > 30 ? ' danger' : days > 7 ? ' warn' : '');
+    fresh.textContent = '마지막 인덱싱: ' + ago;
+  } else {
+    fresh.className = 'freshness warn';
+    fresh.textContent = '아직 인덱싱 실행 기록 없음';
+  }
+}
+
+async function loadDirList() {
+  try {
+    const res = await fetch(API + '/health');
+    // Just show a helpful message about directory structure
+    document.getElementById('dirList').innerHTML = `
+      <div class="dir-item"><span class="icon">📁</span> docs/ — RAG 문서 (md 파일)</div>
+      <div class="dir-item"><span class="icon">📁</span> sources/backend/ — 백엔드 소스코드</div>
+      <div class="dir-item"><span class="icon">📁</span> sources/frontend/ — 프론트엔드 소스코드</div>
+      <div style="margin-top:6px;font-size:11px;color:#aaa">
+        서버의 data/ 디렉토리에 소스코드 폴더를 복사하세요.
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('dirList').innerHTML = '<div style="color:#e74c3c">로드 실패</div>';
+  }
+}
+
+let configTargets = [];
+
+async function loadConfig() {
+  const res = await fetch(API + '/config');
+  const data = await res.json();
+  configTargets = data.targets || [];
+  renderTargets();
+}
+
+function renderTargets() {
+  document.getElementById('targetsList').innerHTML = configTargets.map((t, i) => `
+    <div class="target-row">
+      <input type="text" value="${escapeHtml(t.glob)}" onchange="configTargets[${i}].glob=this.value" style="flex:1" placeholder="예: sources/backend/**/*.java">
+      <select onchange="configTargets[${i}].doc_type=this.value">
+        <option value="convention" ${t.doc_type==='convention'?'selected':''}>convention</option>
+        <option value="source" ${t.doc_type==='source'?'selected':''}>source</option>
+      </select>
+      <button class="btn btn-outline" onclick="configTargets.splice(${i},1);renderTargets()" title="삭제" style="padding:4px 9px">&times;</button>
+    </div>
+  `).join('');
+}
+
+function addTarget() {
+  configTargets.push({ glob: '', doc_type: 'source' });
+  renderTargets();
+}
+
+async function saveConfig() {
+  const valid = configTargets.filter(t => t.glob.trim());
+  await fetch(API + '/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targets: valid }),
+  });
+  configTargets = valid;
+  renderTargets();
+  toast('설정 저장됨');
+}
+
+async function runIndex() {
+  const btn = document.getElementById('indexBtn');
+  btn.disabled = true; btn.textContent = '인덱싱 중...';
+  try {
+    const res = await fetch(API + '/index', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const data = await res.json();
+    toast('인덱싱 완료: ' + data.indexed + '개 갱신, ' + data.skipped + '개 스킵');
+  } catch(e) { toast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '전체 인덱싱 실행';
+  loadStats();
+}
+
+// === 검색 테스트 ===
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  const type = document.getElementById('searchType').value;
+  const url = API + '/search?q=' + encodeURIComponent(q) + '&top_k=10' + (type ? '&type=' + type : '');
+  const res = await fetch(url);
+  const data = await res.json();
+  document.getElementById('searchResults').innerHTML = data.results.map(r => `
+    <div class="result-item">
+      <div class="result-header">
+        <span class="result-source">${r.source} <span style="color:#888;font-size:11px">(${r.doc_type})</span></span>
+        <span class="result-score">${(r.similarity * 100).toFixed(1)}%</span>
+      </div>
+      <div class="result-content">${escapeHtml(r.content.substring(0, 500))}${r.content.length > 500 ? '...' : ''}</div>
+    </div>
+  `).join('') || '<div style="color:#999;padding:20px;text-align:center">결과 없음</div>';
+}
+
+// 초기: 포커스
+document.getElementById('chatInput').focus();
 </script>
 </body>
 </html>

@@ -7,7 +7,7 @@ from sqlalchemy import func, text
 from config import PROJECT_ID, PROJECT_NAME, PROJECT_BASE_PATH
 from db.database import SessionLocal
 from models.models import Project, Document
-from routers import index, search, chat
+from routers import index, search, chat, docs
 from services.embedder import get_model
 
 
@@ -25,6 +25,10 @@ async def lifespan(app: FastAPI):
             db.add(Project(id=PROJECT_ID, name=PROJECT_NAME, base_path=PROJECT_BASE_PATH))
             db.commit()
             print(f"Project '{PROJECT_ID}' registered.")
+        elif existing.base_path != PROJECT_BASE_PATH:
+            existing.base_path = PROJECT_BASE_PATH
+            db.commit()
+            print(f"Project '{PROJECT_ID}' base_path updated to '{PROJECT_BASE_PATH}'.")
     finally:
         db.close()
 
@@ -36,6 +40,7 @@ app = FastAPI(title="Q-CMS RAG Chatbot", version="2.0.0", lifespan=lifespan)
 app.include_router(index.router)
 app.include_router(search.router)
 app.include_router(chat.router)
+app.include_router(docs.router)
 
 app.mount("/ui", StaticFiles(directory="static", html=True), name="static")
 
