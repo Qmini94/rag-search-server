@@ -48,12 +48,12 @@ body { font-family:'Segoe UI',sans-serif; background:#f5f6fa; color:#333; height
 .admin-tabs button:hover { color:#fff; }
 .admin-close { background:none; border:none; color:rgba(255,255,255,.6); font-size:20px; cursor:pointer; padding:4px 8px; }
 .admin-close:hover { color:#fff; }
-.admin-body { flex:1; overflow:hidden; }
+.admin-body { flex:1; overflow:hidden; min-height:0; }
 .admin-tab { display:none; height:100%; overflow-y:auto; }
-.admin-tab.active { display:flex; flex-direction:column; }
+.admin-tab.active { display:flex; flex-direction:column; height:100%; min-height:0; }
 
 /* 문서 관리 */
-.docs-layout { display:flex; flex:1; overflow:hidden; }
+.docs-layout { display:flex; flex:1; overflow:hidden; height:100%; }
 .docs-sidebar { width:260px; background:#fff; border-right:1px solid #e0e0e0; display:flex; flex-direction:column; }
 .docs-sidebar .toolbar { padding:10px; border-bottom:1px solid #eee; display:flex; gap:6px; }
 .docs-list { flex:1; overflow-y:auto; }
@@ -63,7 +63,7 @@ body { font-family:'Segoe UI',sans-serif; background:#f5f6fa; color:#333; height
 .docs-list .item .meta { font-size:11px; color:#999; }
 .docs-list .item .del-btn { background:none; border:none; color:#ccc; cursor:pointer; font-size:15px; }
 .docs-list .item .del-btn:hover { color:#e74c3c; }
-.docs-editor { flex:1; display:flex; flex-direction:column; }
+.docs-editor { flex:1; display:flex; flex-direction:column; height:100%; min-height:0; }
 .docs-editor .editor-toolbar { padding:8px 14px; background:#fff; border-bottom:1px solid #e0e0e0; display:flex; justify-content:space-between; align-items:center; }
 .docs-editor .editor-toolbar .filename { font-size:14px; font-weight:600; }
 .docs-editor textarea { flex:1; width:100%; padding:14px; border:none; outline:none; font-family:'Consolas','Courier New',monospace; font-size:13px; line-height:1.6; resize:none; background:#fafafa; }
