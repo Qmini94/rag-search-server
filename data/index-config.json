@@ -1,0 +1,27 @@
+{
+  "targets": [
+    {
+      "glob": "docs/*.md",
+      "doc_type": "convention"
+    },
+    {
+      "glob": "sources/backend/**/*.java",
+      "doc_type": "source"
+    },
+    {
+      "glob": "sources/frontend/**/*.vue",
+      "doc_type": "source"
+    },
+    {
+      "glob": "sources/frontend/**/*.ts",
+      "doc_type": "source"
+    }
+  ],
+  "last_indexed_at": "2026-06-30T15:58:45.777207+09:00",
+  "last_stats": {
+    "indexed": 550,
+    "skipped": 0,
+    "deleted": 0,
+    "errors": 0
+  }
+}

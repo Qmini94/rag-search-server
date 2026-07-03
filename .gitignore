@@ -4,4 +4,3 @@ __pycache__/
 *.stackdump
 docu/.obsidian/
 data/sources/
-data/docs/
